@@ -3,7 +3,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
 
 /*
 Module Name: S-Curve Progress Report
-Description: Adds a project S-Curve chart to visualize planned vs. actual progress.
+Description: demo visualization of project progress using S-Curve chart
 Version: 1.1
 Author: Naufan Zaki Luqmanulhakim
 */
