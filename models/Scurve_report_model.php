@@ -14,6 +14,15 @@ class Scurve_report_model extends App_Model
      */
     public function save_baseline($project_id, $data)
     {
+        // --- TEMPORARY DEBUGGING ---
+        log_activity('S-Curve Save Triggered for Project ID ' . $project_id);
+        log_activity('S-Curve Data Received: ' . json_encode($data));
+        // --- END DEBUGGING ---
+
+        $this->db->trans_begin();
+
+        $this->db->where('project_id', $project_id);
+
         // Start a transaction to ensure data integrity
         $this->db->trans_begin();
 
@@ -26,11 +35,11 @@ class Scurve_report_model extends App_Model
                 // Only insert if there's a date and a label
                 if (!empty($row['date_point']) && !empty($row['period_label'])) {
                     $insert = [
-                        'project_id'       => $project_id,
-                        'period_label'     => $row['period_label'],
-                        'plan_cumulative'  => !empty($row['plan_cumulative']) ? $row['plan_cumulative'] : 0,
-                        'actual_cumulative'=> !empty($row['actual_cumulative']) ? $row['actual_cumulative'] : 0,
-                        'date_point'       => $row['date_point']
+                        'project_id' => $project_id,
+                        'period_label' => $row['period_label'],
+                        'plan_cumulative' => !empty($row['plan_cumulative']) ? $row['plan_cumulative'] : 0,
+                        'actual_cumulative' => !empty($row['actual_cumulative']) ? $row['actual_cumulative'] : 0,
+                        'date_point' => $row['date_point']
                     ];
                     $this->db->insert(db_prefix() . 'scurve_baselines', $insert);
                 }
@@ -52,9 +61,9 @@ class Scurve_report_model extends App_Model
     public function get_project_baseline($project_id)
     {
         return $this->db->where('project_id', $project_id)
-                        ->order_by('date_point', 'asc')
-                        ->get(db_prefix() . 'scurve_baselines')
-                        ->result_array();
+            ->order_by('date_point', 'asc')
+            ->get(db_prefix() . 'scurve_baselines')
+            ->result_array();
     }
 
     /**
@@ -84,7 +93,7 @@ class Scurve_report_model extends App_Model
             $labels[] = $row['period_label'];
             $plan_data[] = $row['plan_cumulative'];
             $actual_data[] = $row['actual_cumulative'];
-            
+
             // Find the index for "Today's" line
             if ($today_index === null && $row['date_point'] >= $current_date) {
                 $today_index = $i > 0 ? $i - 0.5 : 0; // Place line between points
@@ -93,7 +102,7 @@ class Scurve_report_model extends App_Model
 
         return [
             'labels' => $labels,
-            'plan'   => $plan_data,
+            'plan' => $plan_data,
             'actual' => $actual_data,
             'todayIndex' => $today_index,
         ];
