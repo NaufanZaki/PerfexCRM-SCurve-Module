@@ -1,241 +1,338 @@
 <?php defined('BASEPATH') or exit('No direct script access allowed'); ?>
 
 <div class="row">
-    <div class="col-md-12">
-        <h4 class="tw-font-semibold tw-text-lg"><?php echo _l('scurve_progress_chart'); ?></h4>
-    </div>
+  <div class="col-md-12">
+    <h4 class="tw-font-semibold tw-text-lg"><?php echo _l('scurve_progress_chart'); ?></h4>
+  </div>
 </div>
 
 <div class="row mbot15">
-    <div class="col-md-3">
-        <label for="scurve_time_filter" class="control-label"><strong>View By:</strong></label>
-        <select id="scurve_time_filter" class="form-control selectpicker" data-width="100%">
-            <option value="all" selected>All Time</option>
-            <option value="this_month">This Month</option>
-            <option value="last_month">Last Month</option>
-            <option value="custom">Custom Range</option>
-        </select>
-    </div>
-    <div class="col-md-3" id="scurve_date_range_container" style="display: none;">
-        <label for="scurve_date_range" class="control-label"><strong>Date Range:</strong></label>
-        <input type="text" id="scurve_date_range" class="form-control" placeholder="Select date range" />
-    </div>
+  <div class="col-md-3">
+    <label for="scurve_time_filter" class="control-label"><strong>View By:</strong></label>
+    <select id="scurve_time_filter" class="form-control selectpicker" data-width="100%">
+      <option value="all" selected>All Time</option>
+      <option value="this_month">This Month</option>
+      <option value="last_month">Last Month</option>
+      <option value="custom">Custom Range</option>
+    </select>
+  </div>
+  <div class="col-md-3" id="scurve_date_range_container" style="display: none;">
+    <label for="scurve_date_range" class="control-label"><strong>Date Range:</strong></label>
+    <input type="text" id="scurve_date_range" class="form-control" placeholder="Select date range" />
+  </div>
 </div>
 
-<div class="row">
-    <div class="col-md-12">
-        <div class="panel_s">
-            <div class="panel-body" style="height: 400px;">
-                <canvas id="scurveMainChart"></canvas>
-            </div>
-        </div>
+<!-- Two small charts above the main chart -->
+<div class="row mbot15">
+  <div class="col-md-6">
+    <div class="panel_s">
+      <div class="panel-body" style="height: 200px;">
+        <canvas id="scurvePlanChart"></canvas>
+      </div>
     </div>
+  </div>
+  <div class="col-md-6">
+    <div class="panel_s">
+      <div class="panel-body" style="height: 200px;">
+        <canvas id="scurveActualChart"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Main chart below -->
+<div class="row">
+  <div class="col-md-12">
+    <div class="panel_s">
+      <div class="panel-body" style="height: 400px;">
+        <canvas id="scurveMainChart"></canvas>
+      </div>
+    </div>
+  </div>
 </div>
 
 <hr />
 
 <div class="row">
-    <div class="col-md-12">
-        <h4>Progress Data</h4>
-        <div class="table-responsive">
-            <table class="table table-bordered" id="scurveDataTable">
-                <thead>
-                    <tr>
-                        <th>Period</th>
-                        <th>Plan Progress</th>
-                        <th>Cumulative Plan</th>
-                        <th>Actual Progress</th>
-                        <th>Cumulative Actual</th>
-                        <th>Deviation</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td colspan="6" class="text-center">Loading data...</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+  <div class="col-md-12">
+    <h4>Progress Data</h4>
+    <div class="table-responsive">
+      <table class="table table-bordered" id="scurveDataTable">
+        <thead>
+          <tr>
+            <th>Period</th>
+            <th>Plan Progress</th>
+            <th>Cumulative Plan</th>
+            <th>Actual Progress</th>
+            <th>Cumulative Actual</th>
+            <th>Deviation</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td colspan="6" class="text-center">Loading data...</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
+  </div>
 </div>
 
 <!-- Chart.js + plugins -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.4.0/dist/chartjs-plugin-annotation.min.js"></script>
+<script
+  src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<script
+  src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.4.0/dist/chartjs-plugin-annotation.min.js"></script>
 
 <script>
 (function waitForjQuery() {
-    if (typeof window.jQuery === "undefined") {
-        console.warn("⏳ Waiting for jQuery...");
-        return setTimeout(waitForjQuery, 200);
-    }
+  if (typeof window.jQuery === "undefined") {
+    console.warn("⏳ Waiting for jQuery...");
+    return setTimeout(waitForjQuery, 200);
+  }
 
-    jQuery(function($) {
-        const csrfData = {
-            token_name: '<?php echo $this->security->get_csrf_token_name(); ?>',
-            hash: '<?php echo $this->security->get_csrf_hash(); ?>'
-        };
-        const projectId = <?php echo (int)$project->id; ?>;
+  jQuery(function ($) {
+    const csrfData = {
+      token_name: '<?php echo $this->security->get_csrf_token_name(); ?>',
+      hash: '<?php echo $this->security->get_csrf_hash(); ?>'
+    };
+    const projectId = <?php echo json_encode(isset($project->id) ? (int) $project->id : 0); ?>;
 
-        // --- Chart Init ---
-        const ctx = document.getElementById('scurveMainChart').getContext('2d');
-        let scurveMainChart = new Chart(ctx, {
-            type: 'line',
-            data: { labels: [], datasets: [] },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                interaction: { mode: 'nearest', intersect: false },
-                plugins: {
-                    legend: { position: 'top' },
-                    tooltip: {
-                        callbacks: {
-                            label: (ctx) => ctx.dataset.label + ': ' + ctx.formattedValue + '%'
-                        }
-                    }
-                },
-                scales: {
-                    y: { beginAtZero: true, max: 100, title: { display: true, text: 'Cumulative Progress (%)' } },
-                    x: { title: { display: true, text: 'Period' } }
-                }
+    const ctxMain = document.getElementById('scurveMainChart').getContext('2d');
+    const ctxPlan = document.getElementById('scurvePlanChart').getContext('2d');
+    const ctxActual = document.getElementById('scurveActualChart').getContext('2d');
+
+    const todayIso = moment().format('YYYY-MM-DD');
+
+    var scurveMainChart = new Chart(ctxMain, {
+      type: 'line',
+      data: { labels: [], datasets: [] },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'nearest', intersect: false },
+        plugins: {
+          legend: { position: 'top' },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) {
+                var dateLabel = ctx.label || '';
+                return ctx.dataset.label + ': ' + ctx.formattedValue + '% (' + dateLabel + ')';
+              }
             }
-        });
+          },
+          annotation: {
+            annotations: {
+              todayLine: {
+                type: 'line',
+                scaleID: 'x',
+                value: todayIso,
+                borderColor: 'rgba(0,0,0,0.6)',
+                borderWidth: 2,
+                label: {
+                  enabled: true,
+                  content: 'Today ' + todayIso,
+                  position: 'start',
+                  backgroundColor: 'rgba(0,0,0,0.7)',
+                  color: '#fff'
+                }
+              }
+            }
+          }
+        },
+        scales: {
+          y: { beginAtZero: true, max: 100, title: { display: true, text: 'Cumulative Progress (%)' } },
+          x: {
+            type: 'time',
+            time: {
+              parser: 'yyyy-MM-dd',
+              tooltipFormat: 'PPP',
+              unit: 'day',
+              displayFormats: { day: 'yyyy-MM-dd' }
+            },
+            title: { display: true, text: 'Date / Period' }
+          }
+        }
+      }
+    });
 
-        // --- Load Data ---
-        function loadChartData(startDate = null, endDate = null) {
-            console.log("🔄 loadChartData", { startDate, endDate });
+    var scurvePlanChart = new Chart(ctxPlan, {
+      type: 'line',
+      data: { labels: [], datasets: [] },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) { return 'Plan: ' + ctx.formattedValue + '%'; }
+            }
+          }
+        },
+        scales: {
+          y: { beginAtZero: true, max: 100, title: { display: true, text: 'Cumulative Plan (%)' } },
+          x: {
+            type: 'time',
+            time: {
+              parser: 'yyyy-MM-dd',
+              unit: 'day',
+              displayFormats: { day: 'yyyy-MM-dd' }
+            },
+            title: { display: true, text: 'Date / Period' }
+          }
+        }
+      }
+    });
 
-            const postData = {
-                start_date: startDate,
-                end_date: endDate,
-                [csrfData.token_name]: csrfData.hash
+    var scurveActualChart = new Chart(ctxActual, {
+      type: 'line',
+      data: { labels: [], datasets: [] },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) { return 'Actual: ' + ctx.formattedValue + '%'; }
+            }
+          }
+        },
+        scales: {
+          y: { beginAtZero: true, max: 100, title: { display: true, text: 'Cumulative Actual (%)' } },
+          x: {
+            type: 'time',
+            time: {
+              parser: 'yyyy-MM-dd',
+              unit: 'day',
+              displayFormats: { day: 'yyyy-MM-dd' }
+            },
+            title: { display: true, text: 'Date / Period' }
+          }
+        }
+      }
+    });
+
+    function loadChartData(startDate, endDate) {
+      startDate = (typeof startDate !== 'undefined') ? startDate : null;
+      endDate = (typeof endDate !== 'undefined') ? endDate : null;
+
+      console.log("🔄 loadChartData", "startDate=", startDate, "endDate=", endDate);
+
+      var postData = { start_date: startDate, end_date: endDate };
+      postData[csrfData.token_name] = csrfData.hash;
+
+      $.ajax({
+        url: "<?php echo admin_url('scurve_report/get_chart_data/'); ?>" + projectId,
+        type: "POST",
+        data: postData,
+        dataType: "json",
+        success: function (response) {
+          csrfData.hash = response.csrfHash;
+          var data = response.chartData || {};
+          var dates = (data && (data.dates || data.date_points || data.date_points_iso || data.date)) || null;
+          var periods = (data && data.periods) || (data && data.labels) || null;
+          var xLabels = dates ? dates : (periods ? periods : []);
+
+          if (data && xLabels.length > 0) {
+            var displayLabels = xLabels.map(function (d, i) {
+              var p = (periods && periods[i]) ? periods[i] : '';
+              return (p ? (p + ' — ') : '') + d;
+            });
+
+            scurveMainChart.data.labels = xLabels;
+            scurveMainChart.data.datasets = [
+              { label: 'Cumulative Plan', data: data.plan, borderColor: 'rgb(75,192,192)', tension: 0.3, fill: false, pointBackgroundColor: 'rgb(75,192,192)' },
+              { label: 'Cumulative Actual', data: data.actual, borderColor: 'rgb(255,99,132)', tension: 0.3, fill: false, pointBackgroundColor: 'rgb(255,99,132)' }
+            ];
+
+            var today = moment().format('YYYY-MM-DD');
+            if (!scurveMainChart.options.plugins.annotation) scurveMainChart.options.plugins.annotation = { annotations: {} };
+            scurveMainChart.options.plugins.annotation.annotations = scurveMainChart.options.plugins.annotation.annotations || {};
+            scurveMainChart.options.plugins.annotation.annotations.todayLine = {
+              type: 'line',
+              scaleID: 'x',
+              value: today,
+              borderColor: 'rgba(0,0,0,0.6)',
+              borderWidth: 2,
+              label: { enabled: true, content: 'Today ' + today, position: 'start', backgroundColor: 'rgba(0,0,0,0.7)', color: '#fff' }
             };
 
-            $.ajax({
-                url: "<?php echo admin_url('scurve_report/get_chart_data/'); ?>" + projectId,
-                type: "POST",
-                data: postData,
-                dataType: "json",
-                success: function(response) {
-                    csrfData.hash = response.csrfHash;
-                    const data = response.chartData;
+            scurveMainChart.update();
 
-                    if (data && data.labels.length > 0) {
-                        // Chart update
-                        scurveMainChart.data.labels = data.labels;
-                        scurveMainChart.data.datasets = [
-                            {
-                                label: 'Cumulative Plan',
-                                data: data.plan,
-                                borderColor: 'rgb(75, 192, 192)',
-                                tension: 0.3,
-                                fill: false,
-                                pointBackgroundColor: 'rgb(75, 192, 192)'
-                            },
-                            {
-                                label: 'Cumulative Actual',
-                                data: data.actual,
-                                borderColor: 'rgb(255, 99, 132)',
-                                tension: 0.3,
-                                fill: false,
-                                pointBackgroundColor: 'rgb(255, 99, 132)'
-                            }
-                        ];
-                        scurveMainChart.update();
+            scurvePlanChart.data.labels = xLabels;
+            scurvePlanChart.data.datasets = [{ label: 'Cumulative Plan', data: data.plan, borderColor: 'rgb(75,192,192)', tension: 0.3, fill: false }];
+            scurvePlanChart.update();
 
-                        // Table update
-                        updateTable(data);
-                    } else {
-                        $('#scurveDataTable tbody').html('<tr><td colspan="6" class="text-center">No data</td></tr>');
-                    }
-                },
-                error: function(xhr, status, error) {
-                    console.error("❌ AJAX error", { xhr, status, error });
-                }
-            });
+            scurveActualChart.data.labels = xLabels;
+            scurveActualChart.data.datasets = [{ label: 'Cumulative Actual', data: data.actual, borderColor: 'rgb(255,99,132)', tension: 0.3, fill: false }];
+            scurveActualChart.update();
+
+            updateTable(data, xLabels, periods);
+          } else {
+            $('#scurveDataTable tbody').html('<tr><td colspan="6" class="text-center">No data</td></tr>');
+            scurveMainChart.data.labels = []; scurveMainChart.data.datasets = []; scurveMainChart.update();
+            scurvePlanChart.data.labels = []; scurvePlanChart.data.datasets = []; scurvePlanChart.update();
+            scurveActualChart.data.labels = []; scurveActualChart.data.datasets = []; scurveActualChart.update();
+          }
+        },
+        error: function (xhr, status, error) {
+          console.error("❌ AJAX error", xhr, status, error);
         }
+      });
+    }
 
-        function updateTable(data) {
-            const tbody = $("#scurveDataTable tbody");
-            tbody.empty();
-            let prevPlan = 0, prevActual = 0;
+    function updateTable(data, datesArray, periodsArray) {
+      datesArray = (typeof datesArray !== 'undefined') ? datesArray : null;
+      periodsArray = (typeof periodsArray !== 'undefined') ? periodsArray : null;
+      var tbody = $("#scurveDataTable tbody");
+      tbody.empty();
+      var prevPlan = 0, prevActual = 0;
+      var length = (datesArray ? datesArray.length : (data.labels ? data.labels.length : (data.plan ? data.plan.length : 0)));
+      for (var i = 0; i < length; i++) {
+        var cumPlan = parseFloat(data.plan[i]) || 0;
+        var cumActual = parseFloat(data.actual[i]) || 0;
+        var incrementalPlan = (cumPlan - prevPlan).toFixed(2);
+        var incrementalActual = (cumActual - prevActual).toFixed(2);
+        var deviation = (cumActual - cumPlan).toFixed(2);
+        var deviationNum = parseFloat(deviation);
+        var deviationClass = deviationNum < 0 ? 'text-danger fw-bold' : 'text-success fw-bold';
+        var deviationSymbol = deviationNum < 0 ? '🔻' : '🔼';
+        var periodLabel = (periodsArray && periodsArray[i]) ? periodsArray[i] : (data.labels && data.labels[i] ? data.labels[i] : '');
+        var dateLabel = (datesArray && datesArray[i]) ? datesArray[i] : '';
+        var firstCol = periodLabel && dateLabel ? (periodLabel + ' — ' + dateLabel) : (dateLabel ? dateLabel : periodLabel);
+        tbody.append('<tr><td>' + firstCol + '</td><td>' + incrementalPlan + '%</td><td>' + cumPlan.toFixed(2) + '%</td><td>' + incrementalActual + '%</td><td>' + cumActual.toFixed(2) + '%</td><td class="' + deviationClass + '">' + deviation + '% ' + deviationSymbol + '</td></tr>');
+        prevPlan = cumPlan; prevActual = cumActual;
+      }
+    }
 
-            for (let i = 0; i < data.labels.length; i++) {
-                const cumPlan = parseFloat(data.plan[i]);
-                const cumActual = parseFloat(data.actual[i]);
-
-                const incrementalPlan = (cumPlan - prevPlan).toFixed(2);
-                const incrementalActual = (cumActual - prevActual).toFixed(2);
-                const deviation = (cumActual - cumPlan).toFixed(2);
-
-                const deviationClass = deviation < 0 ? 'text-danger fw-bold' : 'text-success fw-bold';
-                const deviationSymbol = deviation < 0 ? '🔻' : '🔼';
-
-                tbody.append(`
-                    <tr>
-                        <td>${data.labels[i]}</td>
-                        <td>${incrementalPlan}%</td>
-                        <td>${cumPlan.toFixed(2)}%</td>
-                        <td>${incrementalActual}%</td>
-                        <td>${cumActual.toFixed(2)}%</td>
-                        <td class="${deviationClass}">${deviation}% ${deviationSymbol}</td>
-                    </tr>
-                `);
-
-                prevPlan = cumPlan;
-                prevActual = cumActual;
-            }
-        }
-
-        // // --- Date Range Picker (custom range)
-        // $('#scurve_date_range').daterangepicker({
-        //     opens: 'left',
-        //     autoUpdateInput: false,
-        //     locale: { format: 'YYYY-MM-DD', cancelLabel: 'Clear' }
-        // });
-
-        // $('#scurve_date_range').on('apply.daterangepicker', function(ev, picker) {
-        //     const start = picker.startDate.format('YYYY-MM-DD');
-        //     const end = picker.endDate.format('YYYY-MM-DD');
-        //     $(this).val(start + ' - ' + end);
-
-        //     // filter chart + table
-        //     loadChartData(start, end);
-        // });
-
-        // $('#scurve_date_range').on('cancel.daterangepicker', function(ev, picker) {
-        //     $(this).val('');
-        // });
-
-        // --- Dropdown Filter ---
-        $('#scurve_time_filter').on('change', function() {
-            const viewType = $(this).val();
-            let start, end;
-
-            if (viewType === 'all') {
-                $('#scurve_date_range_container').hide();
-                loadChartData();
-            } else if (viewType === 'this_month') {
-                $('#scurve_date_range_container').hide();
-                start = moment().startOf('month').format('YYYY-MM-DD');
-                end = moment().endOf('month').format('YYYY-MM-DD');
-                loadChartData(start, end);
-            } else if (viewType === 'last_month') {
-                $('#scurve_date_range_container').hide();
-                start = moment().subtract(1, 'month').startOf('month').format('YYYY-MM-DD');
-                end = moment().subtract(1, 'month').endOf('month').format('YYYY-MM-DD');
-                loadChartData(start, end);
-            } else if (viewType === 'custom') {
-                $('#scurve_date_range_container').show();
-            }
-        });
-
-        // --- Default load: this month ---
-        const startDefault = moment().startOf('month').format('YYYY-MM-DD');
-        const endDefault = moment().endOf('month').format('YYYY-MM-DD');
-        $('#scurve_time_filter').val('this_month');
-        loadChartData(startDefault, endDefault);
+    $('#scurve_time_filter').on('change', function () {
+      var viewType = $(this).val();
+      var start, end;
+      if (viewType === 'all') {
+        $('#scurve_date_range_container').hide();
+        loadChartData();
+      } else if (viewType === 'this_month') {
+        $('#scurve_date_range_container').hide();
+        start = moment().startOf('month').format('YYYY-MM-DD');
+        end = moment().endOf('month').format('YYYY-MM-DD');
+        loadChartData(start, end);
+      } else if (viewType === 'last_month') {
+        $('#scurve_date_range_container').hide();
+        start = moment().subtract(1, 'month').startOf('month').format('YYYY-MM-DD');
+        end = moment().subtract(1, 'month').endOf('month').format('YYYY-MM-DD');
+        loadChartData(start, end);
+      } else if (viewType === 'custom') {
+        $('#scurve_date_range_container').show();
+      }
     });
+
+    var startDefault = moment().startOf('month').format('YYYY-MM-DD');
+    var endDefault = moment().endOf('month').format('YYYY-MM-DD');
+    $('#scurve_time_filter').val('this_month');
+    loadChartData(startDefault, endDefault);
+  });
 })();
 </script>
