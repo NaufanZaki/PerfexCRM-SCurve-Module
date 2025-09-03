@@ -8,42 +8,30 @@ class Scurve_report_model extends App_Model
         parent::__construct();
     }
 
-    /**
-     * Save baseline inputs for a project.
-     * This will delete the old baseline and insert the new one.
-     */
     public function save_baseline($project_id, $data)
     {
-        // --- TEMPORARY DEBUGGING ---
-        log_activity('S-Curve Save Triggered for Project ID ' . $project_id);
-        log_activity('S-Curve Data Received: ' . json_encode($data));
-        // --- END DEBUGGING ---
-
         $this->db->trans_begin();
 
-        $this->db->where('project_id', $project_id);
-
-        // Start a transaction to ensure data integrity
-        $this->db->trans_begin();
-
-        // Delete the existing baseline for this project first
         $this->db->where('project_id', $project_id);
         $this->db->delete(db_prefix() . 'scurve_baselines');
 
+        $batch_data = [];
         if (is_array($data) && count($data) > 0) {
             foreach ($data as $row) {
-                // Only insert if there's a date and a label
                 if (!empty($row['date_point']) && !empty($row['period_label'])) {
-                    $insert = [
+                    $batch_data[] = [
                         'project_id' => $project_id,
                         'period_label' => $row['period_label'],
                         'plan_cumulative' => !empty($row['plan_cumulative']) ? $row['plan_cumulative'] : 0,
                         'actual_cumulative' => !empty($row['actual_cumulative']) ? $row['actual_cumulative'] : 0,
                         'date_point' => $row['date_point']
                     ];
-                    $this->db->insert(db_prefix() . 'scurve_baselines', $insert);
                 }
             }
+        }
+
+        if (count($batch_data) > 0) {
+            $this->db->insert_batch(db_prefix() . 'scurve_baselines', $batch_data);
         }
 
         if ($this->db->trans_status() === false) {
@@ -55,56 +43,54 @@ class Scurve_report_model extends App_Model
         }
     }
 
-    /**
-     * Fetch baseline data for editing in the baseline tab.
-     */
-    public function get_project_baseline($project_id)
+    public function get_baseline_data($project_id)
     {
         return $this->db->where('project_id', $project_id)
-            ->order_by('date_point', 'asc')
-            ->get(db_prefix() . 'scurve_baselines')
+            ->order_by('date_point', 'ASC')
+            ->get('tblscurve_baselines')
             ->result_array();
     }
 
-    /**
-     * Fetch and format data for the S-Curve chart.
-     * This function was missing.
-     */
-    public function get_chart_data($project_id, $startDate = null, $endDate = null)
+
+    public function get_chart_data($project_id, $start_date = null, $end_date = null)
     {
         $this->db->where('project_id', $project_id);
-        $this->db->order_by('date_point', 'ASC');
 
-        // Optional: Filter by date range if provided
-        if ($startDate && $endDate) {
-            $this->db->where('date_point >=', $startDate);
-            $this->db->where('date_point <=', $endDate);
+        if (!empty($start_date)) {
+            $this->db->where('date_point >=', $start_date);
+        }
+        if (!empty($end_date)) {
+            $this->db->where('date_point <=', $end_date);
         }
 
-        $baseline_data = $this->db->get(db_prefix() . 'scurve_baselines')->result_array();
+        $this->db->order_by('date_point', 'ASC');
+        $query = $this->db->get(db_prefix() . 'scurve_baselines');
 
         $labels = [];
-        $plan_data = [];
-        $actual_data = [];
-        $today_index = null;
-        $current_date = date('Y-m-d');
+        $plan = [];
+        $actual = [];
 
-        foreach ($baseline_data as $i => $row) {
-            $labels[] = $row['period_label'];
-            $plan_data[] = $row['plan_cumulative'];
-            $actual_data[] = $row['actual_cumulative'];
+        $todayIndex = null;
+        $today = date('Y-m-d');
 
-            // Find the index for "Today's" line
-            if ($today_index === null && $row['date_point'] >= $current_date) {
-                $today_index = $i > 0 ? $i - 0.5 : 0; // Place line between points
+        $results = $query->result();
+
+        foreach ($results as $index => $row) {
+            $labels[] = $row->period_label;
+            $plan[] = (float) $row->plan_cumulative;
+            $actual[] = (float) $row->actual_cumulative;
+
+            // If today is equal or after this point, mark it
+            if ($row->date_point == $today && $todayIndex === null) {
+                $todayIndex = $index;
             }
         }
 
         return [
             'labels' => $labels,
-            'plan' => $plan_data,
-            'actual' => $actual_data,
-            'todayIndex' => $today_index,
+            'plan' => $plan,
+            'actual' => $actual,
+            'todayIndex' => $todayIndex,
         ];
     }
 }

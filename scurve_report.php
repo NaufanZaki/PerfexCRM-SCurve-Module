@@ -10,6 +10,20 @@ Author: Naufan Zaki Luqmanulhakim
 
 define('SCURVE_REPORT_MODULE_NAME', 'scurve_report');
 
+hooks()->add_action('app_admin_head', 'scurve_report_add_head_assets');
+hooks()->add_action('app_admin_footer', 'scurve_report_add_footer_assets');
+
+function scurve_report_add_head_assets()
+{
+    echo '<link href="' . module_dir_url('scurve_report', 'assets/scurve.css') . '" rel="stylesheet" type="text/css" />';
+}
+
+function scurve_report_add_footer_assets()
+{
+    echo '<script src="' . module_dir_url('scurve_report', 'assets/scurve.js') . '"></script>';
+}
+
+
 /**
  * Debug logging for module
  */
