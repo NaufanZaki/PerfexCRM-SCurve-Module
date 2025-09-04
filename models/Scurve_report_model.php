@@ -69,28 +69,38 @@ class Scurve_report_model extends App_Model
         $labels = [];
         $plan = [];
         $actual = [];
+        $dates = [];
 
-        $todayIndex = null;
         $today = date('Y-m-d');
+        $todayValue = null; // This will hold the value for our point annotation
 
         $results = $query->result();
 
-        foreach ($results as $index => $row) {
+        foreach ($results as $row) {
             $labels[] = $row->period_label;
             $plan[] = (float) $row->plan_cumulative;
             $actual[] = (float) $row->actual_cumulative;
 
-            // If today is equal or after this point, mark it
-            if ($row->date_point == $today && $todayIndex === null) {
-                $todayIndex = $index;
+            // Ensure dates are in ISO format for Chart.js
+            $dateIso = date('Y-m-d', strtotime($row->date_point));
+            $dates[] = $dateIso;
+
+            // **NEW LOGIC:**
+            // Since the query is ordered by date, we can just keep updating the 'todayValue'.
+            // The last value found on or before today will be the correct one.
+            if ($dateIso <= $today) {
+                // We are looking for the 'actual' progress value
+                $todayValue = (float) $row->actual_cumulative;
             }
         }
 
+        // We no longer need 'todayIndex', it's replaced by the more robust 'todayValue'
         return [
             'labels' => $labels,
             'plan' => $plan,
             'actual' => $actual,
-            'todayIndex' => $todayIndex,
+            'dates' => $dates,
+            'todayValue' => $todayValue, // <-- We send the new value to the frontend
         ];
     }
 }

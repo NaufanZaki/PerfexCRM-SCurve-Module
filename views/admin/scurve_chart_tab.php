@@ -80,10 +80,8 @@
 
 <!-- Chart.js + plugins -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
-<script
-  src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
-<script
-  src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.4.0/dist/chartjs-plugin-annotation.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.4.0/dist/chartjs-plugin-annotation.min.js"></script>
 
 <script>
 (function waitForjQuery() {
@@ -93,6 +91,10 @@
   }
 
   jQuery(function ($) {
+    // Explicitly register the annotation plugin with Chart.js
+    // This is now inside the jQuery ready function to ensure all scripts are loaded.
+    Chart.register(ChartAnnotation);
+
     const csrfData = {
       token_name: '<?php echo $this->security->get_csrf_token_name(); ?>',
       hash: '<?php echo $this->security->get_csrf_hash(); ?>'
@@ -102,8 +104,6 @@
     const ctxMain = document.getElementById('scurveMainChart').getContext('2d');
     const ctxPlan = document.getElementById('scurvePlanChart').getContext('2d');
     const ctxActual = document.getElementById('scurveActualChart').getContext('2d');
-
-    const todayIso = moment().format('YYYY-MM-DD');
 
     var scurveMainChart = new Chart(ctxMain, {
       type: 'line',
@@ -122,23 +122,8 @@
               }
             }
           },
-          annotation: {
-            annotations: {
-              todayLine: {
-                type: 'line',
-                scaleID: 'x',
-                value: todayIso,
-                borderColor: 'rgba(0,0,0,0.6)',
-                borderWidth: 2,
-                label: {
-                  enabled: true,
-                  content: 'Today ' + todayIso,
-                  position: 'start',
-                  backgroundColor: 'rgba(0,0,0,0.7)',
-                  color: '#fff'
-                }
-              }
-            }
+          annotation: { // This initial block is fine, it gets overwritten by our dynamic one
+            annotations: {}
           }
         },
         scales: {
@@ -163,23 +148,12 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: function (ctx) { return 'Plan: ' + ctx.formattedValue + '%'; }
-            }
-          }
-        },
+        plugins: { legend: { display: false } },
         scales: {
           y: { beginAtZero: true, max: 100, title: { display: true, text: 'Cumulative Plan (%)' } },
           x: {
             type: 'time',
-            time: {
-              parser: 'yyyy-MM-dd',
-              unit: 'day',
-              displayFormats: { day: 'yyyy-MM-dd' }
-            },
+            time: { parser: 'yyyy-MM-dd', unit: 'day', displayFormats: { day: 'yyyy-MM-dd' }},
             title: { display: true, text: 'Date / Period' }
           }
         }
@@ -192,23 +166,12 @@
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: function (ctx) { return 'Actual: ' + ctx.formattedValue + '%'; }
-            }
-          }
-        },
+        plugins: { legend: { display: false } },
         scales: {
           y: { beginAtZero: true, max: 100, title: { display: true, text: 'Cumulative Actual (%)' } },
           x: {
             type: 'time',
-            time: {
-              parser: 'yyyy-MM-dd',
-              unit: 'day',
-              displayFormats: { day: 'yyyy-MM-dd' }
-            },
+            time: { parser: 'yyyy-MM-dd', unit: 'day', displayFormats: { day: 'yyyy-MM-dd' }},
             title: { display: true, text: 'Date / Period' }
           }
         }
@@ -218,9 +181,6 @@
     function loadChartData(startDate, endDate) {
       startDate = (typeof startDate !== 'undefined') ? startDate : null;
       endDate = (typeof endDate !== 'undefined') ? endDate : null;
-
-      console.log("🔄 loadChartData", "startDate=", startDate, "endDate=", endDate);
-
       var postData = { start_date: startDate, end_date: endDate };
       postData[csrfData.token_name] = csrfData.hash;
 
@@ -232,34 +192,59 @@
         success: function (response) {
           csrfData.hash = response.csrfHash;
           var data = response.chartData || {};
-          var dates = (data && (data.dates || data.date_points || data.date_points_iso || data.date)) || null;
-          var periods = (data && data.periods) || (data && data.labels) || null;
+          var dates = (data && data.dates) || null;
+          var periods = (data && data.labels) || null;
           var xLabels = dates ? dates : (periods ? periods : []);
 
           if (data && xLabels.length > 0) {
-            var displayLabels = xLabels.map(function (d, i) {
-              var p = (periods && periods[i]) ? periods[i] : '';
-              return (p ? (p + ' — ') : '') + d;
-            });
-
             scurveMainChart.data.labels = xLabels;
             scurveMainChart.data.datasets = [
               { label: 'Cumulative Plan', data: data.plan, borderColor: 'rgb(75,192,192)', tension: 0.3, fill: false, pointBackgroundColor: 'rgb(75,192,192)' },
               { label: 'Cumulative Actual', data: data.actual, borderColor: 'rgb(255,99,132)', tension: 0.3, fill: false, pointBackgroundColor: 'rgb(255,99,132)' }
             ];
 
-            var today = moment().format('YYYY-MM-DD');
-            if (!scurveMainChart.options.plugins.annotation) scurveMainChart.options.plugins.annotation = { annotations: {} };
-            scurveMainChart.options.plugins.annotation.annotations = scurveMainChart.options.plugins.annotation.annotations || {};
-            scurveMainChart.options.plugins.annotation.annotations.todayLine = {
-              type: 'line',
-              scaleID: 'x',
-              value: today,
-              borderColor: 'rgba(0,0,0,0.6)',
-              borderWidth: 2,
-              label: { enabled: true, content: 'Today ' + today, position: 'start', backgroundColor: 'rgba(0,0,0,0.7)', color: '#fff' }
+            const today = moment().format('YYYY-MM-DD');
+            const todayValue = data.todayValue;
+            const annotations = {
+              todayLine: {
+                type: 'line',
+                scaleID: 'x',
+                value: today,
+                borderColor: 'rgba(255, 99, 132, 0.5)',
+                borderWidth: 2,
+                borderDash: [6, 6],
+                label: {
+                  enabled: true,
+                  content: 'Today',
+                  position: 'start',
+                  backgroundColor: 'rgba(255, 99, 132, 0.7)',
+                  color: '#fff',
+                  yAdjust: -15,
+                }
+              }
             };
 
+            if (todayValue !== null) {
+              annotations.todayValuePoint = {
+                type: 'point',
+                xValue: today,
+                yValue: todayValue,
+                backgroundColor: 'rgba(255, 99, 132, 1)',
+                borderColor: '#fff',
+                borderWidth: 2,
+                radius: 6,
+                label: {
+                  enabled: true,
+                  content: `Actual: ${todayValue}%`,
+                  position: 'end',
+                  backgroundColor: 'rgba(255, 99, 132, 0.8)',
+                  color: '#fff',
+                  yAdjust: -15,
+                }
+              };
+            }
+
+            scurveMainChart.options.plugins.annotation.annotations = annotations;
             scurveMainChart.update();
 
             scurvePlanChart.data.labels = xLabels;
@@ -290,7 +275,7 @@
       var tbody = $("#scurveDataTable tbody");
       tbody.empty();
       var prevPlan = 0, prevActual = 0;
-      var length = (datesArray ? datesArray.length : (data.labels ? data.labels.length : (data.plan ? data.plan.length : 0)));
+      var length = (datesArray ? datesArray.length : (data.labels ? data.labels.length : 0));
       for (var i = 0; i < length; i++) {
         var cumPlan = parseFloat(data.plan[i]) || 0;
         var cumActual = parseFloat(data.actual[i]) || 0;
@@ -299,8 +284,8 @@
         var deviation = (cumActual - cumPlan).toFixed(2);
         var deviationNum = parseFloat(deviation);
         var deviationClass = deviationNum < 0 ? 'text-danger fw-bold' : 'text-success fw-bold';
-        var deviationSymbol = deviationNum < 0 ? '🔻' : '🔼';
-        var periodLabel = (periodsArray && periodsArray[i]) ? periodsArray[i] : (data.labels && data.labels[i] ? data.labels[i] : '');
+        var deviationSymbol = deviationNum < 0 ? '🔽' : '🔼';
+        var periodLabel = (periodsArray && periodsArray[i]) ? periodsArray[i] : '';
         var dateLabel = (datesArray && datesArray[i]) ? datesArray[i] : '';
         var firstCol = periodLabel && dateLabel ? (periodLabel + ' — ' + dateLabel) : (dateLabel ? dateLabel : periodLabel);
         tbody.append('<tr><td>' + firstCol + '</td><td>' + incrementalPlan + '%</td><td>' + cumPlan.toFixed(2) + '%</td><td>' + incrementalActual + '%</td><td>' + cumActual.toFixed(2) + '%</td><td class="' + deviationClass + '">' + deviation + '% ' + deviationSymbol + '</td></tr>');
@@ -336,3 +321,5 @@
   });
 })();
 </script>
+
+
